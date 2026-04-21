@@ -30,18 +30,18 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                 Skip to content
             </a>
 
-            <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-lg">
-                <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+            <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
+                <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                     <Link href="/" className="flex items-center">
                         <SendGateLogo />
                     </Link>
 
-                    <div className="hidden items-center gap-1 md:flex">
+                    <div className="hidden items-center gap-0.5 md:flex">
                         {navLinks.map((link) => (
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                                className="rounded-md px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
                             >
                                 {link.label}
                             </Link>

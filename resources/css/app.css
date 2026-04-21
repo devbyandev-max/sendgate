@@ -19,10 +19,11 @@
         'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco,
         Consolas, 'Liberation Mono', 'Courier New', monospace;
 
+    /* Tighter radius scale for dense / refined feel */
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
-    --radius-xl: calc(var(--radius) + 4px);
+    --radius-xl: calc(var(--radius) + 2px);
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -58,8 +59,13 @@
     --color-info-foreground: var(--info-foreground);
 
     --color-border: var(--border);
+    --color-border-strong: var(--border-strong);
     --color-input: var(--input);
     --color-ring: var(--ring);
+
+    /* Elevated surface (denser than card — second tier) */
+    --color-surface: var(--surface);
+    --color-surface-subtle: var(--surface-subtle);
 
     --color-brand-50: #ecfdf5;
     --color-brand-100: #d1fae5;
@@ -87,20 +93,29 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Layered shadows — subtle, multi-stop, "premium depth" */
+    --shadow-2xs: 0 1px 0 0 rgb(0 0 0 / 0.04);
+    --shadow-xs: 0 1px 2px -1px rgb(0 0 0 / 0.06);
+    --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 0.08), 0 1px 1px rgb(0 0 0 / 0.04);
+    --shadow-md: 0 4px 8px -4px rgb(0 0 0 / 0.10), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+    --shadow-lg: 0 12px 24px -12px rgb(0 0 0 / 0.22), 0 4px 8px -4px rgb(0 0 0 / 0.10);
+    --shadow-xl: 0 24px 48px -24px rgb(0 0 0 / 0.30), 0 8px 16px -8px rgb(0 0 0 / 0.14);
 }
 
+/* Light mode tokens (unreachable because the app is dark-only, kept inert for future). */
 :root {
-    /* Zinc neutrals */
     --background: oklch(1 0 0);
     --foreground: oklch(0.141 0.005 285.823);
+    --surface: oklch(1 0 0);
+    --surface-subtle: oklch(0.985 0 0);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.141 0.005 285.823);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.141 0.005 285.823);
 
-    /* Emerald brand */
     --primary: oklch(0.696 0.17 162.48);
-    --primary-foreground: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.141 0.005 285.823);
 
     --secondary: oklch(0.967 0.001 286.375);
     --secondary-foreground: oklch(0.21 0.006 285.885);
@@ -109,7 +124,6 @@
     --accent: oklch(0.967 0.001 286.375);
     --accent-foreground: oklch(0.21 0.006 285.885);
 
-    /* Semantic */
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.985 0 0);
     --success: oklch(0.696 0.17 162.48);
@@ -120,6 +134,7 @@
     --info-foreground: oklch(0.985 0 0);
 
     --border: oklch(0.92 0.004 286.32);
+    --border-strong: oklch(0.85 0.004 286.32);
     --input: oklch(0.92 0.004 286.32);
     --ring: oklch(0.696 0.17 162.48);
 
@@ -129,7 +144,7 @@
     --chart-4: oklch(0.627 0.265 303.9);
     --chart-5: oklch(0.645 0.246 16.439);
 
-    --radius: 0.625rem;
+    --radius: 0.5rem;
 
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.141 0.005 285.823);
@@ -141,51 +156,61 @@
     --sidebar-ring: oklch(0.696 0.17 162.48);
 }
 
+/* Dark mode — the default. Carefully layered zinc ramp for a "premium ops tool" feel. */
 .dark {
-    --background: oklch(0.141 0.005 285.823);
+    /* app background — pure, slightly cold black (zinc-950-ish) */
+    --background: oklch(0.12 0.005 286);
     --foreground: oklch(0.985 0 0);
-    --card: oklch(0.21 0.006 285.885);
+
+    /* surfaces: panels and cards sit a touch lighter than the canvas */
+    --surface: oklch(0.17 0.005 286);
+    --surface-subtle: oklch(0.14 0.005 286);
+    --card: oklch(0.17 0.005 286);
     --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.21 0.006 285.885);
+    --popover: oklch(0.17 0.005 286);
     --popover-foreground: oklch(0.985 0 0);
 
-    --primary: oklch(0.696 0.17 162.48);
-    --primary-foreground: oklch(0.141 0.005 285.823);
+    /* brand — tuned emerald */
+    --primary: oklch(0.74 0.18 162.48);
+    --primary-foreground: oklch(0.15 0.02 162);
 
-    --secondary: oklch(0.274 0.006 286.033);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.274 0.006 286.033);
-    --muted-foreground: oklch(0.705 0.015 286.067);
-    --accent: oklch(0.274 0.006 286.033);
+    --secondary: oklch(0.22 0.005 286);
+    --secondary-foreground: oklch(0.96 0 0);
+    --muted: oklch(0.22 0.005 286);
+    --muted-foreground: oklch(0.66 0.01 286);
+    --accent: oklch(0.22 0.005 286);
     --accent-foreground: oklch(0.985 0 0);
 
-    --destructive: oklch(0.704 0.191 22.216);
+    --destructive: oklch(0.66 0.21 24);
     --destructive-foreground: oklch(0.985 0 0);
-    --success: oklch(0.696 0.17 162.48);
-    --success-foreground: oklch(0.985 0 0);
-    --warning: oklch(0.828 0.189 84.429);
-    --warning-foreground: oklch(0.141 0.005 285.823);
-    --info: oklch(0.623 0.214 259.815);
+    --success: oklch(0.74 0.18 162.48);
+    --success-foreground: oklch(0.15 0.02 162);
+    --warning: oklch(0.82 0.19 84);
+    --warning-foreground: oklch(0.15 0.02 84);
+    --info: oklch(0.68 0.2 259);
     --info-foreground: oklch(0.985 0 0);
 
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.696 0.17 162.48);
+    /* borders: two weights — subtle for large surfaces, strong for inputs/hover */
+    --border: oklch(1 0 0 / 8%);
+    --border-strong: oklch(1 0 0 / 16%);
+    --input: oklch(1 0 0 / 12%);
+    --ring: oklch(0.74 0.18 162.48);
 
-    --chart-1: oklch(0.696 0.17 162.48);
-    --chart-2: oklch(0.623 0.214 259.815);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
+    --chart-1: oklch(0.74 0.18 162.48);
+    --chart-2: oklch(0.68 0.2 259);
+    --chart-3: oklch(0.82 0.19 84);
+    --chart-4: oklch(0.71 0.24 304);
+    --chart-5: oklch(0.69 0.22 16);
 
-    --sidebar: oklch(0.21 0.006 285.885);
+    /* sidebar: matches surface layer exactly — feels like a single app skeleton, not a floating panel */
+    --sidebar: oklch(0.14 0.005 286);
     --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.696 0.17 162.48);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.274 0.006 286.033);
+    --sidebar-primary: oklch(0.74 0.18 162.48);
+    --sidebar-primary-foreground: oklch(0.15 0.02 162);
+    --sidebar-accent: oklch(0.2 0.005 286);
     --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.696 0.17 162.48);
+    --sidebar-border: oklch(1 0 0 / 6%);
+    --sidebar-ring: oklch(0.74 0.18 162.48);
 }
 
 @layer base {
@@ -193,17 +218,56 @@
         @apply border-border;
     }
 
-    body {
-        @apply bg-background text-foreground font-sans antialiased;
-        font-feature-settings:
-            'cv02', 'cv03', 'cv04', 'cv11';
+    html {
+        /* Slightly denser base size: 14px body, headings scale from there */
+        font-size: 14px;
     }
 
-    h1,
-    h2,
-    h3,
-    h4 {
-        letter-spacing: -0.02em;
+    body {
+        @apply bg-background text-foreground font-sans antialiased;
+        /* Enable tabular numerals for numbers in tables/stats, plus OpenType refinements */
+        font-feature-settings:
+            'cv02', 'cv03', 'cv04', 'cv11', 'ss01', 'ss03';
+        font-variant-numeric: tabular-nums;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+    }
+
+    /* Tight, display-grade headings */
+    h1, h2, h3, h4 {
+        letter-spacing: -0.025em;
+        font-feature-settings: 'ss01' on;
+    }
+
+    /* Enable monospace tabular numerals in tables + stat cards */
+    table, .tabular-nums, [data-numeric] {
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Scrollbars, dark-mode refined */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: oklch(1 0 0 / 8%);
+        border-radius: 999px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: oklch(1 0 0 / 14%);
+        background-clip: content-box;
+        border: 2px solid transparent;
+    }
+
+    /* Selection uses the brand, subtly */
+    ::selection {
+        background: oklch(0.74 0.18 162.48 / 25%);
     }
 }
 
@@ -212,10 +276,100 @@
         text-wrap: balance;
     }
 
+    /* Subtle emerald grid — for hero backgrounds */
     .bg-grid-emerald {
         background-image:
             linear-gradient(to right, rgb(16 185 129 / 0.06) 1px, transparent 1px),
             linear-gradient(to bottom, rgb(16 185 129 / 0.06) 1px, transparent 1px);
         background-size: 48px 48px;
+    }
+
+    /* Neutral dotted grid — for dashboard canvases */
+    .bg-dot-grid {
+        background-image: radial-gradient(circle, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    /* Mesh gradient — premium-feel ambient glow */
+    .bg-mesh-emerald {
+        background-image:
+            radial-gradient(at 10% 0%, rgb(16 185 129 / 0.18) 0%, transparent 55%),
+            radial-gradient(at 100% 100%, rgb(4 120 87 / 0.12) 0%, transparent 50%);
+    }
+
+    /* Hero radial halo */
+    .bg-halo-emerald {
+        background-image:
+            radial-gradient(ellipse at 50% 0%, rgb(16 185 129 / 0.15) 0%, transparent 60%);
+    }
+
+    /* Film-grain noise overlay — reads as "premium" in dark UIs. Pure CSS, no image. */
+    .bg-noise {
+        position: relative;
+    }
+    .bg-noise::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.035;
+        mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* Inner highlight — reads like a light from above catching the top edge of a surface */
+    .ring-inset-highlight {
+        box-shadow:
+            inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+            inset 0 0 0 1px rgb(255 255 255 / 0.02);
+    }
+
+    /* Gradient-border (used on premium CTAs / cards). Apply alongside a solid bg. */
+    .border-gradient-emerald {
+        background-image: linear-gradient(180deg, oklch(0.74 0.18 162.48 / 0.35), transparent 60%);
+        background-clip: border-box;
+    }
+
+    /* Keyboard shortcut hint — ⌘K etc. */
+    .kbd {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.25rem;
+        height: 1.25rem;
+        padding: 0 0.375rem;
+        border-radius: 0.25rem;
+        background: var(--muted);
+        color: var(--muted-foreground);
+        font-family: var(--font-mono);
+        font-size: 0.6875rem;
+        font-weight: 500;
+        border: 1px solid var(--border);
+        box-shadow: inset 0 -1px 0 0 rgb(0 0 0 / 0.12);
+    }
+
+    /* Subtle fade-in for route transitions / deferred content */
+    .animate-fade-in {
+        animation: fade-in 200ms ease-out;
+    }
+    @keyframes fade-in {
+        from { opacity: 0; transform: translateY(2px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Shimmer for skeletons */
+    .animate-shimmer {
+        background: linear-gradient(
+            90deg,
+            var(--muted) 0%,
+            oklch(0.28 0.005 286) 40%,
+            var(--muted) 80%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.4s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
     }
 }

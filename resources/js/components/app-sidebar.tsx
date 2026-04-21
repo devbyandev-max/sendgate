@@ -31,34 +31,78 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import type { NavItem, SharedData } from '@/types';
+import type { SharedData } from '@/types';
+import type { NavGroup, NavItem } from '@/types/navigation';
 
-const customerNav: NavItem[] = [
-    { title: 'Dashboard', href: '/app/dashboard', icon: LayoutGrid },
-    { title: 'SIMs', href: '/app/sims', icon: Radio },
-    { title: 'Send SMS', href: '/app/sms/send', icon: Send },
-    { title: 'Inbox', href: '/app/sms/inbox', icon: Inbox },
-    { title: 'Outbox', href: '/app/sms/outbox', icon: MessageCircle },
-    { title: 'Scheduled', href: '/app/sms/scheduled', icon: Timer },
-    { title: 'Campaigns', href: '/app/campaigns', icon: Megaphone },
-    { title: 'Contacts', href: '/app/contacts', icon: Users },
-    { title: 'Analytics', href: '/app/analytics', icon: BarChart3 },
-    { title: 'API keys', href: '/app/api-keys', icon: Key },
-    { title: 'Webhooks', href: '/app/webhooks', icon: Webhook },
-    { title: 'Billing', href: '/app/billing', icon: CreditCard },
+const customerGroups: NavGroup[] = [
+    {
+        label: 'Overview',
+        items: [
+            { title: 'Dashboard', href: '/app/dashboard', icon: LayoutGrid },
+            { title: 'Analytics', href: '/app/analytics', icon: BarChart3 },
+        ],
+    },
+    {
+        label: 'Messaging',
+        items: [
+            { title: 'Send SMS', href: '/app/sms/send', icon: Send },
+            { title: 'Inbox', href: '/app/sms/inbox', icon: Inbox },
+            { title: 'Outbox', href: '/app/sms/outbox', icon: MessageCircle },
+            { title: 'Scheduled', href: '/app/sms/scheduled', icon: Timer },
+            { title: 'Campaigns', href: '/app/campaigns', icon: Megaphone },
+        ],
+    },
+    {
+        label: 'Contacts & SIMs',
+        items: [
+            { title: 'SIMs', href: '/app/sims', icon: Radio },
+            { title: 'Contacts', href: '/app/contacts', icon: Users },
+        ],
+    },
+    {
+        label: 'Developer',
+        items: [
+            { title: 'API keys', href: '/app/api-keys', icon: Key },
+            { title: 'Webhooks', href: '/app/webhooks', icon: Webhook },
+        ],
+    },
+    {
+        label: 'Account',
+        items: [{ title: 'Billing', href: '/app/billing', icon: CreditCard }],
+    },
 ];
 
-const adminNav: NavItem[] = [
-    { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutGrid },
-    { title: 'Customers', href: '/admin/customers', icon: Users },
-    { title: 'SIMs', href: '/admin/sims', icon: Radio },
-    { title: 'Messages', href: '/admin/messages', icon: MessageCircle },
-    { title: 'Invoices', href: '/admin/invoices', icon: FileText },
-    { title: 'Payments', href: '/admin/payments', icon: CreditCard },
-    { title: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
-    { title: 'Announcements', href: '/admin/announcements', icon: Megaphone },
-    { title: 'Admins', href: '/admin/admins', icon: ShieldCheck },
-    { title: 'Activity logs', href: '/admin/activity-logs', icon: FileText },
+const adminGroups: NavGroup[] = [
+    {
+        label: 'Overview',
+        items: [
+            { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutGrid },
+            { title: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+        ],
+    },
+    {
+        label: 'Customers',
+        items: [
+            { title: 'Customers', href: '/admin/customers', icon: Users },
+            { title: 'SIMs', href: '/admin/sims', icon: Radio },
+            { title: 'Messages', href: '/admin/messages', icon: MessageCircle },
+        ],
+    },
+    {
+        label: 'Revenue',
+        items: [
+            { title: 'Invoices', href: '/admin/invoices', icon: FileText },
+            { title: 'Payments', href: '/admin/payments', icon: CreditCard },
+        ],
+    },
+    {
+        label: 'System',
+        items: [
+            { title: 'Announcements', href: '/admin/announcements', icon: Megaphone },
+            { title: 'Admins', href: '/admin/admins', icon: ShieldCheck },
+            { title: 'Activity logs', href: '/admin/activity-logs', icon: FileText },
+        ],
+    },
 ];
 
 const footerNavItems: NavItem[] = [
@@ -72,28 +116,24 @@ export function AppSidebar() {
     const path = typeof window !== 'undefined' ? window.location.pathname : (url as string | undefined) ?? '';
     const inAdmin = path.startsWith('/admin');
     const isAdmin = auth?.user?.is_admin;
-    const items = inAdmin && isAdmin ? adminNav : customerNav;
+    const groups = inAdmin && isAdmin ? adminGroups : customerGroups;
     const homeHref = inAdmin && isAdmin ? '/admin/dashboard' : '/app/dashboard';
 
     return (
         <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
+            <SidebarHeader className="border-b border-sidebar-border/60">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                        <SidebarMenuButton size="lg" asChild className="gap-2.5">
                             <Link href={homeHref} prefetch>
-                                <div className="flex items-center gap-2">
-                                    <SendGateMark className="size-7" />
-                                    <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-                                        <span className="text-base font-extrabold tracking-tight">
-                                            Send<span className="text-primary">Gate</span>
-                                        </span>
-                                        {inAdmin && isAdmin && (
-                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-                                                Admin
-                                            </span>
-                                        )}
-                                    </div>
+                                <SendGateMark className="size-7 shrink-0" />
+                                <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
+                                    <span className="truncate text-sm font-bold tracking-tight">
+                                        Send<span className="text-primary">Gate</span>
+                                    </span>
+                                    <span className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                        {inAdmin && isAdmin ? 'Admin console' : 'SMS gateway'}
+                                    </span>
                                 </div>
                             </Link>
                         </SidebarMenuButton>
@@ -101,11 +141,11 @@ export function AppSidebar() {
                 </SidebarMenu>
             </SidebarHeader>
 
-            <SidebarContent>
-                <NavMain items={items} />
+            <SidebarContent className="gap-4 py-4">
+                <NavMain groups={groups} />
             </SidebarContent>
 
-            <SidebarFooter>
+            <SidebarFooter className="border-t border-sidebar-border/60">
                 <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>

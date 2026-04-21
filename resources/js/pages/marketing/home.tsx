@@ -3,11 +3,9 @@ import {
     ArrowRight,
     CheckCircle2,
     Code2,
-    Gauge,
     MessageSquare,
     Radio,
     ShieldCheck,
-    Sparkles,
     Users,
     Wallet,
     Zap,
@@ -17,7 +15,6 @@ import { FeatureCard } from '@/components/marketing/feature-card';
 import { SectionHeading } from '@/components/marketing/section-heading';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 const features = [
     {
@@ -260,45 +257,56 @@ export default function MarketingHome() {
 
 function Hero() {
     return (
-        <section className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-brand-500/10 via-transparent to-brand-500/5" />
-            <div
-                className="absolute inset-0 -z-10 opacity-[0.35]"
-                style={{
-                    backgroundImage:
-                        'radial-gradient(circle at 25% 10%, rgba(16,185,129,0.25), transparent 40%), radial-gradient(circle at 80% 80%, rgba(4,120,87,0.2), transparent 45%)',
-                }}
-            />
-            <div className="absolute inset-x-0 top-0 -z-10 h-[42rem] bg-grid-emerald opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
+        <section className="relative overflow-hidden bg-noise">
+            {/* Layered ambient background */}
+            <div className="absolute inset-0 bg-mesh-emerald" />
+            <div className="absolute inset-x-0 top-0 -z-10 h-[48rem] bg-grid-emerald opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
+            <div className="absolute inset-x-0 -top-20 -z-10 h-96 bg-halo-emerald" />
 
-            <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
+            <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:px-8 lg:py-28">
                 <div className="flex flex-col justify-center">
-                    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
-                        <Sparkles className="size-3.5 text-primary" />
-                        <span>Built for the Philippines 🇵🇭</span>
+                    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 bg-surface/60 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+                        <span className="relative flex size-2">
+                            <span className="absolute inline-flex size-full rounded-full bg-primary/40 motion-safe:animate-ping" />
+                            <span className="relative inline-flex size-2 rounded-full bg-primary" />
+                        </span>
+                        <span>Built in the Philippines 🇵🇭</span>
+                        <span className="h-3 w-px bg-border" />
+                        <span className="text-foreground">v1.0 live</span>
                     </div>
-                    <h1 className="mt-6 text-balance text-5xl font-extrabold tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-                        SMS gateway for businesses that <span className="text-primary">send a lot</span>.
+
+                    <h1 className="mt-6 text-balance text-5xl font-bold tracking-[-0.035em] text-foreground sm:text-6xl lg:text-[5.25rem] lg:leading-[1.02]">
+                        SMS gateway for businesses that{' '}
+                        <span className="bg-gradient-to-br from-primary via-emerald-400 to-emerald-600 bg-clip-text text-transparent">
+                            send a lot.
+                        </span>
                     </h1>
-                    <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+
+                    <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
                         Bring your own SIM. Pay one flat rate. Send unlimited SMS from your own Philippine mobile
-                        number — from a REST API, a CSV upload, or a dashboard your ops team will enjoy opening.
+                        number — from a REST API, a CSV upload, or a dashboard your ops team will actually enjoy
+                        opening.
                     </p>
+
                     <div className="mt-8 flex flex-wrap gap-3">
-                        <Button asChild size="lg" className="shadow-md">
+                        <Button asChild size="lg">
                             <Link href="/register">
                                 Get started — ₱1,499/mo
-                                <ArrowRight className="ml-2 size-4" />
+                                <ArrowRight className="size-4" />
                             </Link>
                         </Button>
                         <Button asChild size="lg" variant="outline">
-                            <Link href="/docs">View documentation →</Link>
+                            <Link href="/docs">
+                                <Code2 className="size-4" />
+                                Read the docs
+                            </Link>
                         </Button>
                     </div>
-                    <div className="mt-8 flex flex-wrap gap-6 text-sm text-muted-foreground">
+
+                    <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] text-muted-foreground">
                         <Tick>No per-message fees</Tick>
                         <Tick>No contracts</Tick>
-                        <Tick>Setup in 2–3 days</Tick>
+                        <Tick>Live in 2–3 days</Tick>
                     </div>
                 </div>
 
@@ -327,57 +335,74 @@ function HeroPreviewCard() {
 
     return (
         <div className="relative flex items-center justify-center">
-            <div className="absolute inset-x-10 top-10 -z-10 h-full rounded-3xl bg-brand-500/10 blur-3xl" />
-            <div className="relative w-full max-w-md rotate-[-1deg] rounded-2xl border border-border bg-card p-4 shadow-xl">
-                <div className="flex items-center gap-2 border-b border-border pb-3">
+            {/* Ambient glow behind card */}
+            <div className="absolute inset-x-10 top-10 -z-10 h-full rounded-3xl bg-primary/10 blur-3xl" />
+
+            {/* The card */}
+            <div className="relative w-full max-w-md overflow-hidden rounded-xl border border-border/80 bg-surface/95 shadow-[0_24px_48px_-24px_rgb(0_0_0/0.5),inset_0_1px_0_0_rgb(255_255_255/0.06)] backdrop-blur-xl">
+                {/* Top gradient bar */}
+                <div className="h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+                {/* Chrome */}
+                <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
                     <div className="flex gap-1.5">
-                        <span className="size-2.5 rounded-full bg-red-400" />
-                        <span className="size-2.5 rounded-full bg-amber-400" />
-                        <span className="size-2.5 rounded-full bg-emerald-400" />
+                        <span className="size-2.5 rounded-full bg-red-400/80" />
+                        <span className="size-2.5 rounded-full bg-amber-400/80" />
+                        <span className="size-2.5 rounded-full bg-emerald-400/80" />
                     </div>
-                    <div className="ml-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Gauge className="size-3.5" />
-                        Live dashboard
+                    <div className="ml-3 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <span className="font-mono">api.sendgate.ph</span>
+                        <span className="text-muted-foreground/50">·</span>
+                        <span>Live dashboard</span>
                     </div>
-                    <div className="ml-auto inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
-                        <span className="size-1.5 rounded-full bg-brand-500 motion-safe:animate-pulse" /> Active
+                    <div className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
+                        <span className="size-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse" />
+                        Active
                     </div>
                 </div>
 
-                <div className="mt-3 space-y-2">
+                {/* Message list */}
+                <div className="divide-y divide-border/60">
                     {messages.map((m, idx) => (
                         <div
                             key={idx}
-                            className={cn(
-                                'group flex items-start gap-3 rounded-lg border border-transparent p-2 transition-colors',
-                                'hover:border-border hover:bg-muted/30',
-                            )}
+                            className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/40"
                         >
-                            <div className="flex size-8 flex-none items-center justify-center rounded-md bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
-                                <Zap className="size-4" />
+                            <div className="flex size-7 flex-none items-center justify-center rounded-md bg-primary/15 text-primary">
+                                <Zap className="size-3.5" />
                             </div>
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
-                                    <span className="truncate text-xs font-semibold text-foreground">{m.to}</span>
-                                    <span className="ml-auto text-[10px] text-muted-foreground">{m.ms}</span>
+                                    <span className="truncate font-mono text-[11px] font-semibold text-foreground">
+                                        {m.to}
+                                    </span>
+                                    <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+                                        {m.ms}
+                                    </span>
                                 </div>
-                                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{m.body}</p>
+                                <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{m.body}</p>
                             </div>
-                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                            <span className="rounded border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
                                 {m.status}
                             </span>
                         </div>
                     ))}
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-[11px] text-muted-foreground">
-                    <span>SIM #1 · Globe · +63917 123 0001</span>
-                    <span className="font-mono">4.3 SMS/s</span>
+                {/* Footer stats */}
+                <div className="flex items-center justify-between border-t border-border/60 px-4 py-2 text-[11px] text-muted-foreground">
+                    <span>
+                        <span className="text-foreground">SIM #1</span>
+                        <span className="mx-1.5 text-muted-foreground/50">·</span>
+                        Globe <span className="font-mono">+63917 123 0001</span>
+                    </span>
+                    <span className="font-mono tabular-nums text-primary">4.3 SMS/s</span>
                 </div>
             </div>
         </div>
     );
 }
+
 
 function PricingBlock() {
     const included = [

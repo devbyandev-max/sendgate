@@ -16,15 +16,20 @@ export function FeatureCard({
     return (
         <div
             className={cn(
-                'group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/40 hover:shadow-md',
+                'group relative overflow-hidden rounded-lg border border-border bg-card p-5',
+                'shadow-[inset_0_1px_0_0_rgb(255_255_255/0.04)]',
+                'transition-all duration-200 hover:border-primary/30 hover:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.06),0_4px_12px_-4px_rgb(16_185_129/0.15)]',
                 className,
             )}
         >
-            <div className="flex size-11 items-center justify-center rounded-lg bg-brand-100 text-brand-700 transition-transform group-hover:scale-105 dark:bg-brand-900/30 dark:text-brand-300">
-                <Icon className="size-5" strokeWidth={2.25} />
+            {/* Hover glow */}
+            <div className="pointer-events-none absolute -inset-px -z-10 rounded-lg bg-gradient-to-b from-primary/0 to-primary/0 opacity-0 transition-opacity duration-300 group-hover:from-primary/10 group-hover:opacity-100" />
+
+            <div className="flex size-9 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary transition-transform group-hover:scale-105">
+                <Icon className="size-4" strokeWidth={2.25} />
             </div>
-            <h3 className="mt-5 text-lg font-semibold tracking-tight text-foreground">{title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
+            <h3 className="mt-4 text-[15px] font-semibold tracking-tight text-foreground">{title}</h3>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{description}</p>
         </div>
     );
 }
