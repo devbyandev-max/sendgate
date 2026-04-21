@@ -27,6 +27,9 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
     Route::get('sims', [Customer\SimController::class, 'index'])->name('sims.index');
     Route::get('sims/{sim}', [Customer\SimController::class, 'show'])->name('sims.show');
 
+    Route::get('conversations', [Customer\ConversationController::class, 'index'])->name('conversations.index');
+    Route::post('conversations', [Customer\ConversationController::class, 'store'])->name('conversations.store');
+
     Route::get('sms/send', [Customer\SmsController::class, 'create'])->name('sms.create');
     Route::post('sms/send', [Customer\SmsController::class, 'store'])->name('sms.store');
     Route::post('sms/bulk', [Customer\SmsController::class, 'bulkStore'])->name('sms.bulk');

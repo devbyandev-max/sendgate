@@ -9,6 +9,7 @@ import {
     LifeBuoy,
     Megaphone,
     MessageCircle,
+    MessagesSquare,
     Radio,
     Send,
     Settings as SettingsIcon,
@@ -45,6 +46,7 @@ const customerGroups: NavGroup[] = [
     {
         label: 'Messaging',
         items: [
+            { title: 'Conversations', href: '/app/conversations', icon: MessagesSquare },
             { title: 'Send SMS', href: '/app/sms/send', icon: Send },
             { title: 'Inbox', href: '/app/sms/inbox', icon: Inbox },
             { title: 'Outbox', href: '/app/sms/outbox', icon: MessageCircle },
