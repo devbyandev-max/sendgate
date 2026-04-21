@@ -10,14 +10,15 @@ use Symfony\Component\HttpFoundation\Response;
 class HandleAppearance
 {
     /**
-     * Handle an incoming request.
+     * Handle an incoming request. Shares the user's theme preference (light /
+     * dark / system) with the Blade root template so the correct `class` lands
+     * on <html> on first paint — no flash of wrong theme.
      *
      * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // SendGate is dark-mode only — always share "dark" regardless of cookie.
-        View::share('appearance', 'dark');
+        View::share('appearance', $request->cookie('appearance') ?? 'dark');
 
         return $next($request);
     }

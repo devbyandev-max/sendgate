@@ -1,14 +1,30 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'dark') === 'dark'])>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        {{-- SendGate is dark-mode only. Set the background immediately to avoid
-             any flash of unstyled content on first paint. --}}
+        {{-- Inline script: when appearance is "system", resolve against the OS preference
+             BEFORE any stylesheet paints, so there's no flash of wrong theme. --}}
+        <script>
+            (function() {
+                var appearance = '{{ $appearance ?? "dark" }}';
+                if (appearance === 'system') {
+                    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    if (prefersDark) document.documentElement.classList.add('dark');
+                }
+            })();
+        </script>
+
+        {{-- Inline style sets the html background so the viewport never flashes wrong.
+             Tokens mirror the ones in resources/css/app.css. --}}
         <style>
             html {
-                background-color: oklch(0.145 0 0);
+                background-color: oklch(1 0 0);
+                color-scheme: light;
+            }
+            html.dark {
+                background-color: oklch(0.12 0.005 286);
                 color-scheme: dark;
             }
         </style>

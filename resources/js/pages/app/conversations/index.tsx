@@ -95,7 +95,7 @@ export default function ConversationsIndex({
         <>
             <Head title={active_conversation ? active_conversation.remote_number : 'Conversations'} />
 
-            <div className="space-y-0 -my-4">
+            <div className="space-y-4">
                 <PageHeader
                     title="Conversations"
                     description="Two-way SMS threads grouped by SIM and contact."
