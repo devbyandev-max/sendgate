@@ -24,11 +24,12 @@ export default function AuthCardLayout({
             <div className="flex w-full max-w-md flex-col gap-6">
                 <Link
                     href={home()}
-                    className="flex items-center gap-2 self-center font-medium"
+                    className="flex items-center gap-2 self-center font-extrabold tracking-tight"
                 >
-                    <div className="flex h-9 w-9 items-center justify-center">
-                        <AppLogoIcon className="size-9 fill-current text-black dark:text-white" />
-                    </div>
+                    <AppLogoIcon className="size-9" />
+                    <span>
+                        Send<span className="text-primary">Gate</span>
+                    </span>
                 </Link>
 
                 <div className="flex flex-col gap-6">

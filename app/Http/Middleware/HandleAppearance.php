@@ -16,7 +16,8 @@ class HandleAppearance
      */
     public function handle(Request $request, Closure $next): Response
     {
-        View::share('appearance', $request->cookie('appearance') ?? 'dark');
+        // SendGate is dark-mode only — always share "dark" regardless of cookie.
+        View::share('appearance', 'dark');
 
         return $next($request);
     }
