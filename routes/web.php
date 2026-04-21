@@ -2,10 +2,19 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\App as Customer;
+use App\Http\Controllers\Gateway\CallbackController as GatewayCallbackController;
 use App\Http\Controllers\Marketing\DocsController;
 use App\Http\Controllers\Marketing\HomeController;
 use App\Http\Controllers\Marketing\PageController;
 use Illuminate\Support\Facades\Route;
+
+// =============================================
+// Hardware gateway callbacks (YX GP pushes events here)
+// =============================================
+Route::prefix('gateway/callback')->middleware('gateway.callback')->group(function () {
+    Route::post('sms', [GatewayCallbackController::class, 'inboundSms'])->name('gateway.callback.sms');
+    Route::post('dlr', [GatewayCallbackController::class, 'deliveryReport'])->name('gateway.callback.dlr');
+});
 
 // =============================================
 // Marketing site
@@ -106,6 +115,10 @@ Route::middleware(['auth', 'verified', 'role:admin|super_admin'])
         Route::post('settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
 
         Route::get('activity-logs', [Admin\ActivityLogController::class, 'index'])->name('activity-logs');
+
+        // Hardware gateway integration
+        Route::get('gateway', [Admin\GatewayController::class, 'index'])->name('gateway.index');
+        Route::get('gateway/health', [Admin\GatewayController::class, 'health'])->name('gateway.health');
     });
 
 require __DIR__.'/settings.php';

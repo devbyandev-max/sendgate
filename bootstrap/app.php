@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnsureUserRole;
+use App\Http\Middleware\Gateway\VerifyGatewayCallback;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -31,6 +32,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureUserRole::class,
             'api.key' => AuthenticateApiKey::class,
+            'gateway.callback' => VerifyGatewayCallback::class,
+        ]);
+
+        // Hardware callbacks never have a session cookie.
+        $middleware->validateCsrfTokens(except: [
+            'gateway/callback/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -100,6 +100,7 @@ const adminGroups: NavGroup[] = [
     {
         label: 'System',
         items: [
+            { title: 'Gateway', href: '/admin/gateway', icon: Radio },
             { title: 'Announcements', href: '/admin/announcements', icon: Megaphone },
             { title: 'Admins', href: '/admin/admins', icon: ShieldCheck },
             { title: 'Activity logs', href: '/admin/activity-logs', icon: FileText },

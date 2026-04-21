@@ -23,3 +23,10 @@ test('admins can access admin dashboard', function () {
 test('guests are redirected to login from app routes', function () {
     $this->get('/app/dashboard')->assertRedirect('/login');
 });
+
+test('admins can reach the gateway admin page', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin)->get('/admin/gateway')->assertOk();
+});

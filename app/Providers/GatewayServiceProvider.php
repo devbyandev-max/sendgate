@@ -19,6 +19,9 @@ class GatewayServiceProvider extends ServiceProvider
                     host: (string) config('gateway.yxgp.host'),
                     username: (string) config('gateway.yxgp.username'),
                     password: (string) config('gateway.yxgp.password'),
+                    charset: (string) config('gateway.yxgp.charset', 'utf8'),
+                    timeoutSeconds: (int) config('gateway.yxgp.timeout_seconds', 10),
+                    verifyTls: (bool) config('gateway.yxgp.verify_tls', true),
                 ),
                 default => new StubGateway,
             };
