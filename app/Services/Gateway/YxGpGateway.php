@@ -22,15 +22,16 @@ use Throwable;
 /**
  * Production driver for the YX-Series GP hardware SMS gateway (YX International).
  *
- * Protocol reference: the device's vendor manual, section 11 "HTTP API".
+ * Protocol: the device's JSON HTTP API (manual §11, but at lowercase paths —
+ * the manual writes /GP_post_sms.html, the actual firmware exposes
+ * /goip_post_sms.html and /goip_get_sms.html).
  *
- * Endpoints used
- *   POST  /GP_post_sms.html?username=&password=   — send SMS (JSON body)
- *   GET   /GP_get_sms.html?username=&password=&sms_id=&sms_num=  — pull inbox
+ *   POST /goip_post_sms.html?username=&password=   — send SMS (JSON in/out)
+ *   GET  /goip_get_sms.html?username=&password=&sms_num=  — pull inbox
  *
- * The device also PUSHES to us (section 8.3.2 "SMS to HTTP" and 7.19 "Status
- * Notification"). Those pushes are received by `Http/Controllers/Gateway/*`
- * controllers, not by this class.
+ * Credentials travel as query-string params (the device's own scheme); no
+ * cookie/session is required for either endpoint. The device PUSHES delivery
+ * receipts and inbound SMS back to us via Http/Controllers/Gateway/*.
  */
 class YxGpGateway implements GatewayInterface
 {
@@ -48,10 +49,7 @@ class YxGpGateway implements GatewayInterface
     }
 
     /**
-     * Send an SMS through the hardware using the documented POST /GP_post_sms.html endpoint.
-     *
-     * We post a single-task payload but the API actually supports batched
-     * tasks — we may extend later for bulk throughput.
+     * Send an SMS via POST /goip_post_sms.html (the device's JSON API).
      */
     public function sendSms(Sim $sim, string $to, string $message): GatewayResponse
     {
@@ -59,11 +57,9 @@ class YxGpGateway implements GatewayInterface
             throw new GatewayException("SIM #{$sim->id} has no port_number; cannot route to a hardware slot.");
         }
 
-        $segments = (int) max(1, (int) ceil(mb_strlen($message) / 160));
+        $segments = max(1, (int) ceil(mb_strlen($message) / 160));
         $tid = (int) (time() % 2_000_000_000);
 
-        // Pre-create the SmsMessage row (queued). That gives us a local id we
-        // stash as provider_message_id so callbacks can match it back.
         $sms = SmsMessage::create([
             'user_id' => $sim->user_id,
             'sim_id' => $sim->id,
@@ -73,61 +69,63 @@ class YxGpGateway implements GatewayInterface
             'message' => $message,
             'segments' => $segments,
             'status' => MessageStatus::Queued,
-            // The YX GP lets the CLIENT set tid; we mirror our SmsMessage id into it so we can correlate.
             'provider_message_id' => 'yxgp:'.$tid,
             'sent_at' => now(),
         ]);
 
+        $task = [
+            'tid' => (string) $tid,
+            'from' => (string) $sim->port_number,
+            'to' => $to,
+            'sms' => $message,
+            'dr' => 1, // request delivery report (V2.4.0 §6.3.2.2)
+        ];
+        // Tell the device exactly where to push the status-report back to so it
+        // works without any admin-side "SMS Forward" configuration on the device.
+        if ($srUrl = $this->statusReportUrl()) {
+            $task['sr_url'] = $srUrl;
+            $task['sr_prd'] = 30;     // push reports every 30s while pending
+            $task['sr_cnt'] = 1;      // and after each finished task
+        }
+        if ($smsUrl = $this->inboundSmsUrl()) {
+            $task['sms_url'] = $smsUrl;
+        }
+
         try {
-            $response = Http::withBasicAuth($this->username, $this->password)
-                ->asJson()
-                ->timeout($this->timeoutSeconds)
+            $response = Http::timeout($this->timeoutSeconds)
                 ->withOptions(['verify' => $this->verifyTls])
-                ->post($this->url('/GP_post_sms.html', [
+                ->withHeaders(['Accept' => 'application/json'])
+                ->asJson()
+                ->post($this->url('/goip_post_sms.html', [
+                    'version' => '1.1',
                     'username' => $this->username,
                     'password' => $this->password,
                 ]), [
                     'type' => 'send-sms',
                     'task_num' => 1,
-                    'tasks' => [
-                        [
-                            'tid' => $tid,
-                            // Device config can override per-port, so we hint the destination port.
-                            'from' => (int) $sim->port_number,
-                            'to' => $to,
-                            'sms' => $message,
-                        ],
-                    ],
-                ])
-                ->throw();
+                    'tasks' => [$task],
+                ]);
 
-            $json = $response->json();
+            if (! $response->successful()) {
+                $reason = 'HTTP '.$response->status();
+                $sms->update(['status' => MessageStatus::Failed, 'error_message' => $reason]);
+
+                return new GatewayResponse(false, $sms->provider_message_id, MessageStatus::Failed->value, $reason, $segments);
+            }
+
+            $json = $response->json() ?? [];
             $code = (int) ($json['code'] ?? 500);
 
             if ($code !== 200) {
-                $reason = $json['reason'] ?? 'Unknown gateway response';
-                $sms->update([
-                    'status' => MessageStatus::Failed,
-                    'error_message' => "Gateway refused ({$code}): {$reason}",
-                ]);
+                $reason = (string) ($json['reason'] ?? 'Unknown gateway response');
+                $sms->update(['status' => MessageStatus::Failed, 'error_message' => "Gateway refused ({$code}): {$reason}"]);
 
-                return new GatewayResponse(
-                    success: false,
-                    providerMessageId: $sms->provider_message_id,
-                    status: MessageStatus::Failed->value,
-                    errorMessage: $reason,
-                    segments: $segments,
-                );
+                return new GatewayResponse(false, $sms->provider_message_id, MessageStatus::Failed->value, $reason, $segments);
             }
 
-            // Per the spec, "0 OK" in status[].status means accepted for send.
-            // We remain in "queued" until a callback (DLR) or a poller tells us otherwise.
-            return new GatewayResponse(
-                success: true,
-                providerMessageId: $sms->provider_message_id,
-                status: MessageStatus::Queued->value,
-                segments: $segments,
-            );
+            // Manual §11.1.2: status[].status === "0 OK" means the task was accepted.
+            // Delivery confirmation comes later via the SMS-to-HTTP callback (§8.3.2).
+            return new GatewayResponse(true, $sms->provider_message_id, MessageStatus::Queued->value, null, $segments);
         } catch (ConnectionException|RequestException $e) {
             Log::warning('YX GP sendSms transport failure', ['sms_id' => $sms->id, 'error' => $e->getMessage()]);
             $sms->update([
@@ -135,13 +133,7 @@ class YxGpGateway implements GatewayInterface
                 'error_message' => 'Gateway unreachable: '.Str::limit($e->getMessage(), 200),
             ]);
 
-            return new GatewayResponse(
-                success: false,
-                providerMessageId: $sms->provider_message_id,
-                status: MessageStatus::Failed->value,
-                errorMessage: $e->getMessage(),
-                segments: $segments,
-            );
+            return new GatewayResponse(false, $sms->provider_message_id, MessageStatus::Failed->value, $e->getMessage(), $segments);
         } catch (Throwable $e) {
             Log::error('YX GP sendSms unexpected failure', ['sms_id' => $sms->id, 'error' => $e->getMessage()]);
             $sms->update([
@@ -150,9 +142,6 @@ class YxGpGateway implements GatewayInterface
             ]);
             throw new GatewayException('YX GP sendSms failed: '.$e->getMessage(), 0, $e);
         } finally {
-            // Belt-and-braces: if no callback ever comes, fake a delivered state
-            // after a delay so the UI doesn't show "queued" forever when the
-            // device is misconfigured. Disable in production by removing this.
             if (config('app.env') !== 'production') {
                 SimulateMessageDeliveryJob::dispatch($sms->id)->delay(now()->addSeconds(30));
             }
@@ -176,7 +165,7 @@ class YxGpGateway implements GatewayInterface
     }
 
     /**
-     * Pull inbound SMS via GET /GP_get_sms.html. Safe to call repeatedly —
+     * Pull inbound SMS via GET /goip_get_sms.html. Safe to call repeatedly —
      * de-duplication is the caller's job (we key on composite (sim_id, sender, content, timestamp)).
      *
      * @return array<int, IncomingMessage>
@@ -184,10 +173,9 @@ class YxGpGateway implements GatewayInterface
     public function pollIncomingMessages(Sim $sim): array
     {
         try {
-            $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout($this->timeoutSeconds)
+            $response = Http::timeout($this->timeoutSeconds)
                 ->withOptions(['verify' => $this->verifyTls])
-                ->get($this->url('/GP_get_sms.html', [
+                ->get($this->url('/goip_get_sms.html', [
                     'username' => $this->username,
                     'password' => $this->password,
                     'sms_num' => 0, // all
@@ -235,6 +223,27 @@ class YxGpGateway implements GatewayInterface
         }
 
         return $results;
+    }
+
+    /**
+     * Public URL the device should POST status-reports to (V2.4.0 §6.3.3).
+     * Null if no callback token is configured — the device will fall back to its admin-UI setting.
+     */
+    protected function statusReportUrl(): ?string
+    {
+        $token = (string) config('gateway.callback.token', '');
+
+        return $token === '' ? null : route('gateway.callback.dlr', ['token' => $token]);
+    }
+
+    /**
+     * Public URL the device should POST received SMS to (V2.4.0 §7).
+     */
+    protected function inboundSmsUrl(): ?string
+    {
+        $token = (string) config('gateway.callback.token', '');
+
+        return $token === '' ? null : route('gateway.callback.sms', ['token' => $token]);
     }
 
     /**

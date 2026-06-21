@@ -14,48 +14,237 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Callbacks pushed by the YX GP hardware gateway (manual sections 7.19 and 8.3.2).
+ * Callbacks pushed by the YX GP hardware gateway.
  *
- * We accept both JSON and form-encoded payloads because the device's "SMS to HTTP"
- * setting supports either mode. Field names are normalised below.
+ * Wire matches V2.4.0 of the YX HTTP API spec:
+ *   - §7.2 "Receive SMS"   → POST {"type":"recv-sms",   "sms_num":N, "sms":[[dr,port,ts,from,to,base64]…]}
+ *   - §6.3.3 "Status report" → POST {"type":"status-report","rpt_num":N,"rpts":[{tid,sending,sent,failed,unsent,sdr,fdr}…]}
+ *
+ * The device pushes here when its `sms_url` / `sr_url` are pointed at us
+ * (we set these per-task in YxGpGateway, so no device-side config is required).
  */
 class CallbackController extends Controller
 {
     /**
-     * An inbound SMS the hardware just received on one of the SIMs.
-     * Device sends fields like: sender, receiver, port, content, time.
+     * Inbound SMS push (V2.4.0 §7).
+     * Each entry in `sms[]` is a positional array: [dr_flag, port, ts, sender, recipient, content].
+     * `content` is base64-encoded UTF-8 for ordinary messages; for delivery reports it's "code scts".
      */
     public function inboundSms(Request $request): JsonResponse
     {
-        $payload = $this->extract($request, ['sender', 'from', 'phone'], ['content', 'sms', 'message']);
+        $payload = $request->json()->all() ?: $request->all();
+        $items = $payload['sms'] ?? [];
+        if (! is_array($items) || $items === []) {
+            // Tolerate legacy form-encoded callbacks for backward compat.
+            return $this->inboundSmsLegacy($request);
+        }
 
-        if (! $payload) {
-            Log::warning('gateway.inbound_sms bad payload', ['body' => $request->getContent()]);
+        $stored = 0;
+        foreach ($items as $row) {
+            if (! is_array($row) || count($row) < 6) {
+                continue;
+            }
 
+            [$drFlag, $portRaw, $tsRaw, $from, $to, $contentRaw] = $row;
+
+            // Delivery-report-flavoured rows are forwarded SMS dropped on the inbox endpoint
+            // — ignore them here; the status-report endpoint is the source of truth for DLR.
+            if ((int) $drFlag === 1) {
+                continue;
+            }
+
+            $port = $this->extractPort((string) $portRaw);
+            $sim = $this->findSim($port, (string) $to);
+            if (! $sim) {
+                Log::warning('gateway.inbound_sms: no matching SIM', ['port' => $port, 'to' => $to]);
+
+                continue;
+            }
+
+            $decoded = base64_decode((string) $contentRaw, true);
+            $message = $decoded !== false ? $decoded : (string) $contentRaw;
+            $receivedAt = $this->parseTime($tsRaw);
+
+            $existing = SmsMessage::where('sim_id', $sim->id)
+                ->where('from_number', (string) $from)
+                ->where('message', $message)
+                ->where('sent_at', $receivedAt)
+                ->first();
+
+            if ($existing) {
+                continue;
+            }
+
+            SmsMessage::create([
+                'user_id' => $sim->user_id,
+                'sim_id' => $sim->id,
+                'direction' => MessageDirection::Inbound,
+                'from_number' => (string) $from,
+                'to_number' => $sim->phone_number,
+                'message' => $message,
+                'status' => MessageStatus::Received,
+                'segments' => max(1, (int) ceil(mb_strlen($message) / 160)),
+                'sent_at' => $receivedAt,
+                'delivered_at' => $receivedAt,
+                'provider_message_id' => 'yxgp-push:'.uniqid('sms_', true),
+            ]);
+
+            $stored++;
+        }
+
+        return response()->json(['ok' => true, 'stored' => $stored]);
+    }
+
+    /**
+     * Delivery / failure report push (V2.4.0 §6.3.3).
+     * `rpts[]` items carry per-task counters; we update the matching SmsMessage by tid.
+     */
+    public function deliveryReport(Request $request): JsonResponse
+    {
+        $payload = $request->json()->all() ?: $request->all();
+        $rpts = $payload['rpts'] ?? null;
+
+        if (! is_array($rpts)) {
+            return $this->deliveryReportLegacy($request);
+        }
+
+        $updated = 0;
+        foreach ($rpts as $rpt) {
+            if (! is_array($rpt) || ! isset($rpt['tid'])) {
+                continue;
+            }
+
+            $tid = $rpt['tid'];
+            $sms = SmsMessage::where('provider_message_id', 'yxgp:'.$tid)->first();
+            if (! $sms) {
+                Log::info('gateway.dlr: unmatched tid', ['tid' => $tid]);
+
+                continue;
+            }
+
+            $sent = (int) ($rpt['sent'] ?? 0);
+            $failed = (int) ($rpt['failed'] ?? 0);
+            $sending = (int) ($rpt['sending'] ?? 0);
+
+            $updates = [];
+            if ($failed > 0 && $sent === 0) {
+                $updates['status'] = MessageStatus::Failed;
+                $updates['error_message'] = $this->extractFailureReason($rpt['fdr'] ?? null);
+            } elseif ($sent > 0) {
+                $updates['status'] = MessageStatus::Sent;
+                $updates['sent_at'] = $sms->sent_at ?? $this->extractFirstSdrTime($rpt['sdr'] ?? null);
+            } elseif ($sending > 0) {
+                $updates['status'] = MessageStatus::Sending;
+            }
+
+            if ($updates !== []) {
+                $sms->update($updates);
+                $updated++;
+            }
+        }
+
+        return response()->json(['ok' => true, 'updated' => $updated]);
+    }
+
+    /**
+     * Best-effort match: by hardware port first (most reliable), then by recipient MSISDN.
+     */
+    protected function findSim(int $port, string $receiver): ?Sim
+    {
+        if ($port > 0) {
+            $sim = Sim::where('port_number', $port)->first();
+            if ($sim) {
+                return $sim;
+            }
+        }
+        if ($receiver !== '') {
+            return Sim::where('phone_number', $receiver)->first();
+        }
+
+        return null;
+    }
+
+    /**
+     * Convert "1.01" / "2.03" port-slot strings to the integer port number we store.
+     */
+    protected function extractPort(string $raw): int
+    {
+        if ($raw === '') {
+            return 0;
+        }
+        if (str_contains($raw, '.')) {
+            return (int) explode('.', $raw)[0];
+        }
+
+        return (int) $raw;
+    }
+
+    /**
+     * fdr[i] shape: [recipient_index, number, port, ts, progress_reason, carrier_reason].
+     */
+    protected function extractFailureReason(mixed $fdr): string
+    {
+        if (! is_array($fdr) || $fdr === []) {
+            return 'Send failed.';
+        }
+        $row = $fdr[0];
+        if (! is_array($row)) {
+            return 'Send failed.';
+        }
+        $progress = (string) ($row[4] ?? '');
+        $carrier = (string) ($row[5] ?? '');
+
+        return trim($carrier !== '' ? $progress.' — '.$carrier : ($progress ?: 'Send failed.'));
+    }
+
+    protected function extractFirstSdrTime(mixed $sdr): DateTimeInterface
+    {
+        if (is_array($sdr) && isset($sdr[0][3])) {
+            return $this->parseTime($sdr[0][3]);
+        }
+
+        return now();
+    }
+
+    protected function parseTime(mixed $raw): DateTimeInterface
+    {
+        if (! $raw) {
+            return now();
+        }
+        if (is_numeric($raw)) {
+            // Spec §7 uses int timestamps; treat as Unix seconds (UTC).
+            return Date::createFromTimestamp((int) $raw);
+        }
+        try {
+            return Date::parse((string) $raw);
+        } catch (\Throwable) {
+            return now();
+        }
+    }
+
+    /**
+     * Backwards-compatible legacy handler for older device firmwares that
+     * push form-encoded fields (sender / content / port) instead of JSON.
+     */
+    protected function inboundSmsLegacy(Request $request): JsonResponse
+    {
+        $from = (string) ($request->input('sender') ?? $request->input('from') ?? $request->input('phone') ?? '');
+        $message = (string) ($request->input('content') ?? $request->input('sms') ?? $request->input('message') ?? '');
+        if ($from === '' || $message === '') {
             return response()->json(['error' => 'Missing sender or content'], 422);
         }
 
-        [$from, $message] = $payload;
         $port = (int) ($request->input('port') ?? $request->input('port_no') ?? 0);
         $receiver = (string) ($request->input('receiver') ?? $request->input('to') ?? '');
-        $timeRaw = $request->input('time') ?? $request->input('scts');
-
-        // Match by port first (most reliable), fall back to receiver phone.
-        $sim = null;
-        if ($port > 0) {
-            $sim = Sim::where('port_number', $port)->first();
-        }
-        if (! $sim && $receiver !== '') {
-            $sim = Sim::where('phone_number', $receiver)->first();
-        }
+        $sim = $this->findSim($port, $receiver);
 
         if (! $sim) {
-            Log::warning('gateway.inbound_sms: no matching SIM', compact('port', 'receiver'));
+            Log::warning('gateway.inbound_sms (legacy): no matching SIM', compact('port', 'receiver'));
 
             return response()->json(['error' => 'No matching SIM for this port/receiver'], 404);
         }
 
-        $receivedAt = $this->parseTime($timeRaw);
+        $receivedAt = $this->parseTime($request->input('time') ?? $request->input('scts'));
 
         $sms = SmsMessage::create([
             'user_id' => $sim->user_id,
@@ -65,7 +254,7 @@ class CallbackController extends Controller
             'to_number' => $sim->phone_number,
             'message' => $message,
             'status' => MessageStatus::Received,
-            'segments' => (int) max(1, (int) ceil(mb_strlen($message) / 160)),
+            'segments' => max(1, (int) ceil(mb_strlen($message) / 160)),
             'sent_at' => $receivedAt,
             'delivered_at' => $receivedAt,
             'provider_message_id' => 'yxgp-push:'.$request->input('id', uniqid('sms_', true)),
@@ -75,10 +264,10 @@ class CallbackController extends Controller
     }
 
     /**
-     * A delivery report from the device for a previously-sent outbound SMS.
-     * Device sends fields like: tid (our correlation id), status, time.
+     * Backwards-compatible legacy handler for older firmwares pushing a flat
+     * {tid, status, time} body instead of the V2.4.0 status-report shape.
      */
-    public function deliveryReport(Request $request): JsonResponse
+    protected function deliveryReportLegacy(Request $request): JsonResponse
     {
         $tid = $request->input('tid') ?? $request->input('task_id') ?? $request->input('id');
         $statusRaw = strtolower((string) ($request->input('status') ?? $request->input('state') ?? ''));
@@ -87,15 +276,11 @@ class CallbackController extends Controller
             return response()->json(['error' => 'Missing tid'], 422);
         }
 
-        // We set provider_message_id to "yxgp:{tid}" when we queued the send.
         $sms = SmsMessage::where('provider_message_id', 'yxgp:'.$tid)->first();
         if (! $sms) {
-            Log::info('gateway.dlr: unmatched tid', ['tid' => $tid]);
-
             return response()->json(['error' => 'Unknown tid'], 404);
         }
 
-        // YX GP status strings are vendor-ish. Conservative mapping.
         $newStatus = match (true) {
             str_contains($statusRaw, 'ok'), str_contains($statusRaw, 'deliver') => MessageStatus::Delivered,
             str_contains($statusRaw, 'sent') => MessageStatus::Sent,
@@ -119,50 +304,5 @@ class CallbackController extends Controller
         $sms->update($updates);
 
         return response()->json(['ok' => true]);
-    }
-
-    /**
-     * @param  list<string>  $fromKeys
-     * @param  list<string>  $bodyKeys
-     * @return array{0:string,1:string}|null
-     */
-    protected function extract(Request $request, array $fromKeys, array $bodyKeys): ?array
-    {
-        $from = null;
-        foreach ($fromKeys as $k) {
-            $v = $request->input($k);
-            if (is_string($v) && $v !== '') {
-                $from = $v;
-                break;
-            }
-        }
-
-        $body = null;
-        foreach ($bodyKeys as $k) {
-            $v = $request->input($k);
-            if (is_string($v) && $v !== '') {
-                $body = $v;
-                break;
-            }
-        }
-
-        if ($from === null || $body === null) {
-            return null;
-        }
-
-        return [$from, $body];
-    }
-
-    protected function parseTime(mixed $raw): DateTimeInterface
-    {
-        if (! $raw) {
-            return now();
-        }
-
-        try {
-            return Date::parse((string) $raw);
-        } catch (\Throwable) {
-            return now();
-        }
     }
 }
